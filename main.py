@@ -304,7 +304,7 @@ def create_readable_zoom_preview(img_base64, page_num):
 
 def create_ocr_pdf(original_pdf):
     """Create OCR version of PDF"""
-    try:
+   try:
         if not original_pdf or original_pdf.is_closed:
             raise Exception("Invalid PDF document")
         
@@ -363,6 +363,10 @@ def create_ocr_pdf(original_pdf):
         # Clean up UI elements
         status_text.empty()
         progress_bar.empty()
+        return new_doc
+       
+        new_doc = fitz.open()
+        new_doc.insert_pdf(original_pdf)
         return new_doc
         
     except Exception as e:
