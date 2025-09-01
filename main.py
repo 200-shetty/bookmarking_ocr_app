@@ -6,8 +6,22 @@ import io
 import tempfile
 import os
 import base64
+import sys
 
-
+# Configure Tesseract path for different environments
+try:
+    if sys.platform.startswith('linux'):
+        # For Linux environments (like Streamlit Cloud)
+        pytesseract.pytesseract.tesseract_cmd = '/usr/bin/tesseract'
+    elif sys.platform.startswith('darwin'):
+        # For macOS
+        pytesseract.pytesseract.tesseract_cmd = '/usr/local/bin/tesseract'
+    else:
+        # For Windows
+        pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+except:
+    # If Tesseract is not available, we'll handle it gracefully
+    pass
 
 # Configure page
 st.set_page_config(
@@ -99,12 +113,17 @@ def convert_page_to_ocr(page):
         img_data = pix.tobytes("png")
         image = Image.open(io.BytesIO(img_data))
         
-        # OCR with specific configuration
-        ocr_text = pytesseract.image_to_string(
-            image, 
-            lang='eng',
-            config='--psm 1 --oem 3'
-        )
+        # Check if Tesseract is available
+        try:
+            # OCR with specific configuration
+            ocr_text = pytesseract.image_to_string(
+                image, 
+                lang='eng',
+                config='--psm 1 --oem 3'
+            )
+        except Exception as e:
+            # If Tesseract is not available, return empty text
+            ocr_text = ""
         
         rect = page.rect
         
@@ -304,7 +323,7 @@ def create_readable_zoom_preview(img_base64, page_num):
 
 def create_ocr_pdf(original_pdf):
     """Create OCR version of PDF"""
-   try:
+    try:
         if not original_pdf or original_pdf.is_closed:
             raise Exception("Invalid PDF document")
         
@@ -333,25 +352,30 @@ def create_ocr_pdf(original_pdf):
                 img_data = pix.tobytes("png")
                 new_page.insert_image(new_page.rect, stream=img_data)
                 
-                # Perform OCR and add invisible text layer
-                image = Image.open(io.BytesIO(img_data))
-                ocr_text = pytesseract.image_to_string(
-                    image, 
-                    lang='eng',
-                    config='--psm 1 --oem 3'
-                )
-                
-                # Add invisible OCR text layer
-                if ocr_text.strip():
-                    new_page.insert_text(
-                        (10, 30),
-                        ocr_text,
-                        fontsize=1,
-                        color=(1, 1, 1)  # White text (invisible)
+                # Try to perform OCR if Tesseract is available
+                try:
+                    image = Image.open(io.BytesIO(img_data))
+                    ocr_text = pytesseract.image_to_string(
+                        image, 
+                        lang='eng',
+                        config='--psm 1 --oem 3'
                     )
+                    
+                    # Add invisible OCR text layer
+                    if ocr_text.strip():
+                        new_page.insert_text(
+                            (10, 30),
+                            ocr_text,
+                            fontsize=1,
+                            color=(1, 1, 1)  # White text (invisible)
+                        )
+                    
+                    # Clean up resources
+                    image.close()
+                except Exception as e:
+                    # If OCR fails, continue without OCR text
+                    pass
                 
-                # Clean up resources
-                image.close()
                 pix = None
                 
             except Exception as e:
@@ -364,13 +388,9 @@ def create_ocr_pdf(original_pdf):
         status_text.empty()
         progress_bar.empty()
         return new_doc
-       
-        new_doc = fitz.open()
-        new_doc.insert_pdf(original_pdf)
-        return new_doc
         
     except Exception as e:
-        st.error(f"OCR conversion error: {str(e)}")
+        st.error(f"PDF processing error: {str(e)}")
         return None
 
 def calculate_cascading_assignments(page_assignments, total_pages):
@@ -557,7 +577,7 @@ def main():
                                 st.balloons()
                                 st.rerun()
                             else:
-                                st.error("OCR conversion failed")
+                                st.error("PDF conversion failed")
                 
             except Exception as e:
                 st.error(f"Error processing file: {str(e)}")
