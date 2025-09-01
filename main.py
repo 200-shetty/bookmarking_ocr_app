@@ -7,15 +7,7 @@ import tempfile
 import os
 import base64
 
-# Configure Tesseract path for Streamlit Cloud
-if sys.platform.startswith('linux'):
-    pytesseract.pytesseract.tesseract_cmd = '/usr/bin/tesseract'
-elif sys.platform.startswith('darwin'):
-    # For macOS
-    pytesseract.pytesseract.tesseract_cmd = '/usr/local/bin/tesseract'
-else:
-    # For Windows, you might need to set this manually if running locally
-    pass
+
 
 # Configure page
 st.set_page_config(
