@@ -504,8 +504,7 @@ def main():
     initialize_session_state()
     
     # Header
-    st.title("⚡ PDF Studio Pro")
-    st.caption("OCR conversion and intelligent bookmarking")
+    st.title("⚡ OCR & Bookmarking Studio")
     
     # Step indicator
     render_step_badges()
