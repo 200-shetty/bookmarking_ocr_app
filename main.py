@@ -86,6 +86,10 @@ st.markdown("""
         color: #334155;
         border: 1px solid #e2e8f0;
     }
+    
+    .custom-bookmark-input {
+        margin-top: 0.5rem;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -405,7 +409,7 @@ def calculate_cascading_assignments(page_assignments, total_pages):
     
     # Add default starting point if first assignment isn't page 1
     if assignment_points[0][0] > 1:
-        assignment_points.insert(0, (1, {"type": "Index", "number": ""}))
+        assignment_points.insert(0, (1, {"type": "Index", "number": "", "custom_name": ""}))
     
     # Apply cascading logic
     for i, (page_num, assignment) in enumerate(assignment_points):
@@ -429,9 +433,13 @@ def create_bookmarks_from_assignments(pdf_doc, page_assignments, total_pages):
         # Group pages by category
         categories = {}
         for page_num, assignment in all_assignments.items():
-            category = assignment["type"]
-            if assignment["type"] == "Annexures" and assignment["number"]:
+            # Use custom name if provided, otherwise generate from type and number
+            if assignment.get("custom_name"):
+                category = assignment["custom_name"]
+            elif assignment["type"] == "Annexures" and assignment["number"]:
                 category = f"Annexure A{assignment['number']}"
+            else:
+                category = assignment["type"]
             
             if category not in categories:
                 categories[category] = []
@@ -623,7 +631,7 @@ def main():
         for page_num in range(start_page, end_page + 1):
             # Get current assignment or inherit from previous
             if page_num not in st.session_state.page_assignments:
-                default_assignment = {"type": "Index", "number": ""}
+                default_assignment = {"type": "Index", "number": "", "custom_name": ""}
                 if page_num > 1:
                     # Look for previous assignment to inherit
                     for prev_page in range(page_num - 1, 0, -1):
@@ -647,7 +655,7 @@ def main():
                 """, unsafe_allow_html=True)
             
             with col2:
-                category_options = ["Index", "Original Application (OA)", "Annexures", "Vakalath"]
+                category_options = ["Index", "Original Application (OA)", "Annexures", "Vakalath", "Custom"]
                 try:
                     current_index = category_options.index(current_assignment["type"])
                 except ValueError:
@@ -671,8 +679,20 @@ def main():
                         label_visibility="collapsed"
                     )
                     display_text = f"Annexure A{annexure_number}" if annexure_number else "Annexures"
+                    custom_name = ""
+                elif category == "Custom":
+                    custom_name = st.text_input(
+                        "Custom Name",
+                        value=current_assignment.get("custom_name", ""),
+                        placeholder="Enter custom bookmark name",
+                        key=f"custom_{page_num}",
+                        label_visibility="collapsed"
+                    )
+                    display_text = custom_name if custom_name else "Custom"
+                    annexure_number = ""
                 else:
                     annexure_number = ""
+                    custom_name = ""
                     display_text = category
                 
                 # Show assignment result
@@ -695,10 +715,12 @@ def main():
             
             # Save assignment if changed
             if (current_assignment.get("type", "") != category or 
-                current_assignment.get("number", "") != annexure_number):
+                current_assignment.get("number", "") != annexure_number or
+                current_assignment.get("custom_name", "") != custom_name):
                 st.session_state.page_assignments[page_num] = {
                     "type": category,
-                    "number": annexure_number
+                    "number": annexure_number,
+                    "custom_name": custom_name
                 }
             
             st.markdown('</div>', unsafe_allow_html=True)
@@ -712,9 +734,13 @@ def main():
             
             assignment_summary = {}
             for page_num, assignment in all_assignments.items():
-                category = assignment["type"]
-                if assignment["type"] == "Annexures" and assignment["number"]:
+                # Use custom name if provided, otherwise generate from type and number
+                if assignment.get("custom_name"):
+                    category = assignment["custom_name"]
+                elif assignment["type"] == "Annexures" and assignment["number"]:
                     category = f"Annexure A{assignment['number']}"
+                else:
+                    category = assignment["type"]
                 
                 if category not in assignment_summary:
                     assignment_summary[category] = []
@@ -762,9 +788,13 @@ def main():
                 )
                 assignment_summary = {}
                 for page_num, assignment in all_assignments.items():
-                    category = assignment["type"]
-                    if assignment["type"] == "Annexures" and assignment["number"]:
+                    # Use custom name if provided, otherwise generate from type and number
+                    if assignment.get("custom_name"):
+                        category = assignment["custom_name"]
+                    elif assignment["type"] == "Annexures" and assignment["number"]:
                         category = f"Annexure A{assignment['number']}"
+                    else:
+                        category = assignment["type"]
                     
                     if category not in assignment_summary:
                         assignment_summary[category] = []
